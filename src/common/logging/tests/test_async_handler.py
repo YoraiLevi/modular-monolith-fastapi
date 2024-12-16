@@ -3,7 +3,7 @@ import logging
 import time
 import pytest
 from unittest.mock import Mock
-from common.logging import AsyncEmitLogHandler
+from ...logging import AsyncEmitLogHandler
 
 logger = logging.getLogger(__name__)
 
