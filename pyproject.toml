@@ -1,10 +1,17 @@
 [project]
-name = "yt-uv"
+name = "app"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "fastapi[standard]>=0.115.6",
+    "httpx>=0.28.1",
+    "jsonschema>=4.23.0",
+    "pytest>=8.3.2",
+    "pytest-asyncio>=0.25.0",
+    "pyyaml>=6.0.2",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -15,7 +22,7 @@ build-backend = "hatchling.build"
 universal = true
 
 [dependency-groups]
-dev = ["pytest-cov>=5.0.0", "pyright>=1.1.381"]
+dev = ["pytest-cov>=5.0.0", "pyright>=1.1.390"]
 
 [tool.ruff]
 line-length = 100
@@ -26,3 +33,16 @@ exclude = [".venv"]
 pythonVersion = "3.13"
 venvPath = "."
 venv = ".venv"
+reportMissingImports = true
+reportUnusedVariable = true
+
+[[tool.pyright.overrides]]  # disable strict type checking for tests
+path = "tests/*"
+reportMissingImports = false
+strict = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto" 
+pythonpath = [
+  ".","src"
+]

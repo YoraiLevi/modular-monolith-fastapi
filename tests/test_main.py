@@ -1,9 +1,12 @@
-from yt_uv import add, multiply
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from app.main import app
 
 
-def test_add():
-    assert add(1, 2) == 3
-
-
-def test_multiply():
-    assert multiply(2.5, 2) == 5
+@pytest.mark.anyio
+async def test_root():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "OK"}

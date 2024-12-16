@@ -1,3 +1,4 @@
+# Versions in the pyproject.toml file are not updated automatically here!
 repos:
   - repo: https://github.com/astral-sh/uv-pre-commit
     rev: 0.5.4
@@ -10,7 +11,7 @@ repos:
         args: [ --fix ]
       - id: ruff-format
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.387
+    rev: v1.1.390
     hooks:
       - id: pyright
   - repo: local
