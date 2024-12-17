@@ -6,11 +6,12 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]>=0.115.6",
-    "httpx>=0.28.1",
+    "httpx[all]>=0.28.1",
     "jsonschema>=4.23.0",
     "pytest>=8.3.2",
     "pytest-asyncio>=0.25.0",
     "pyyaml>=6.0.2",
+    "sqlmodel>=0.0.22",
 ]
 
 [build-system]
@@ -22,14 +23,17 @@ build-backend = "hatchling.build"
 universal = true
 
 [dependency-groups]
-dev = ["pytest-cov>=5.0.0", "pyright>=1.1.390"]
+dev = [
+    "pytest-cov>=5.0.0",
+    "pyright>=1.1.390",
+]
 
 [tool.ruff]
 line-length = 100
 target-version = "py313"
 
 [tool.pyright]
-exclude = [".venv"]
+exclude = [".venv","generated"]
 pythonVersion = "3.13"
 venvPath = "."
 venv = ".venv"
@@ -44,5 +48,5 @@ strict = false
 [tool.pytest.ini_options]
 asyncio_mode = "auto" 
 pythonpath = [
-  ".","src"
+  ".","src","generated"
 ]

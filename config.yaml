@@ -1,0 +1,11 @@
+# config.yaml
+sub_routes:
+  pet_service:
+    path: "/pet"
+    app: "services.pet_service:app"
+    database_url: "sqlite:///./.sqlite_db/pets.db"
+  user_service:
+    path: "/user"
+    app: "services.user_service:app"
+    database_url: "sqlite:///./.sqlite_db/user.db"
+    pet_service_url: "http://localhost:8000"

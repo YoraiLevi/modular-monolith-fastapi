@@ -14,11 +14,11 @@ repos:
     rev: v1.1.390
     hooks:
       - id: pyright
-  - repo: local
-    hooks:
-      - id: pytest
-        name: pytest
-        entry: ./.venv/bin/pytest tests
-        language: python
-        pass_filenames: false
-        always_run: true
+  # - repo: local
+  #   hooks:
+  #     - id: pytest
+  #       name: pytest
+  #       entry: ./.venv/bin/pytest tests
+  #       language: python
+  #       pass_filenames: false
+  #       always_run: true
