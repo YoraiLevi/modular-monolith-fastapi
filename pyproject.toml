@@ -8,6 +8,7 @@ dependencies = [
     "fastapi[standard]>=0.115.6",
     "httpx[all]>=0.28.1",
     "jsonschema>=4.23.0",
+    "pytest-mock>=3.14.0",
     "pytest>=8.3.2",
     "pytest-asyncio>=0.25.0",
     "pyyaml>=6.0.2",
@@ -47,9 +48,6 @@ strict = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto" 
-exclude = [
-  "generated"
-]
 pythonpath = [
   ".","src","generated"
 ]

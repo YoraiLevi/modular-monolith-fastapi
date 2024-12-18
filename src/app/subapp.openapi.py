@@ -1,4 +1,4 @@
-# from app.main import app
+#! /usr/bin/env python3
 from fastapi.routing import Mount
 from fastapi import FastAPI
 import json
@@ -33,9 +33,13 @@ def get_mounted_apps(app: FastAPI):
 
 
 def main(openapi_version, title, version, app, get_mounted_apps):
+    operationIds = set()
     open_api = get_openapi(
         openapi_version=openapi_version, title=title, version=version, routes=app.routes
     )
+    for path in open_api["paths"].values():
+        for method in path.values():
+            operationIds.add(method["operationId"])
     for path_prefix, subapp in get_mounted_apps(app):
         sub_openapi = get_openapi(
             openapi_version=openapi_version, title=title, version=version, routes=subapp.routes
@@ -43,6 +47,26 @@ def main(openapi_version, title, version, app, get_mounted_apps):
         sub_openapi["paths"] = {
             f"{path_prefix}{path}": details for path, details in sub_openapi["paths"].items()
         }
+        operation_prefix = path_prefix.replace("/", "_")
+        if not operation_prefix.endswith("_"):
+            operation_prefix += "_"
+        if operation_prefix.startswith("_"):
+            operation_prefix = operation_prefix[1:]
+        for path in sub_openapi["paths"].values():
+            for method in path.values():
+                if method["operationId"] in operationIds:
+                    if method["operationId"].startswith("root_"):
+                        new_operation_id = f"{method['operationId']}".replace(
+                            "root_", operation_prefix, 1
+                        )
+                    else:
+                        new_operation_id = f"{operation_prefix}{method['operationId']}"
+                    print(
+                        f"Duplicate operationId: {method['operationId']}, New operationId: {new_operation_id}",
+                        file=sys.stderr,
+                    )
+                    method["operationId"] = new_operation_id
+                operationIds.add(method["operationId"])
         open_api = merge_dicts(open_api, sub_openapi)
     print(json.dumps(open_api))
 

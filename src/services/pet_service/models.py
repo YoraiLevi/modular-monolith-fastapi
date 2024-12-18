@@ -1,7 +1,7 @@
 # type: ignore
 from typing import Optional
 from sqlmodel import Field, SQLModel
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 class BasePet(SQLModel):
@@ -37,5 +37,5 @@ class PetUpdateObject(BasePet):
 
 class PetTableObject(PetStrictSchema, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    last_interaction: datetime | None = Field(default_factory=datetime.utcnow, index=True)
-    last_fed: datetime | None = Field(default_factory=datetime.utcnow, index=True)
+    last_interaction: datetime | None = Field(default_factory=lambda: datetime.now(UTC), index=True)
+    last_fed: datetime | None = Field(default_factory=lambda: datetime.now(UTC), index=True)

@@ -5,29 +5,35 @@ from fastapi import Depends, HTTPException, Query
 from sqlmodel import select, delete
 import uvicorn
 
-from .pet_service_client import DefaultApi  # type: ignore
+from .pet_service_client import DefaultApi
 
 from services.user_service import pet_service_client
 
 from ._app import app
 from . import database, models
-
 from common.routers import status_OK
+from common.logging import getContextualLogger
 
 app.include_router(status_OK.router, prefix="/health")
 
 
 async def get_pet_from_pet_service(
-    pet_id: int,
-    session: database.SessionDep,
-    api_instance: DefaultApi = Depends(pet_service_client.getApiClient),
+    pet_id: int, session: database.SessionDep, api_instance: DefaultApi
 ):
+    logger = getContextualLogger()
+    logger.debug("Fetching pet from pet service", extra={"pet_id": pet_id})
     pet_response = None
     try:
         pet_response = await api_instance.get_pet_pets_pet_id_get(pet_id)
     except Exception as e:
+        logger.error(
+            "Failed to fetch pet from pet service", extra={"pet_id": pet_id, "error": str(e)}
+        )
         print("Exception when calling DefaultApi->get_pet_pets_pet_id_get: %s\n" % e)
     if not pet_response:
+        logger.warning(
+            "Pet not found in pet service, cleaning up references", extra={"pet_id": pet_id}
+        )
         statement = delete(models.UserPetTableObject).where(
             models.UserPetTableObject.pet_id == pet_id  # type: ignore
         )
@@ -38,12 +44,13 @@ async def get_pet_from_pet_service(
 
 
 async def get_user_pets_from_pet_service(
-    user_id: int,
-    session: database.SessionDep,
-    api_instance: DefaultApi = Depends(pet_service_client.getApiClient),
+    user_id: int, session: database.SessionDep, api_instance: DefaultApi
 ):
+    logger = getContextualLogger()
+    logger.debug("Fetching user's pets", extra={"user_id": user_id})
     user = session.get(models.UserTableObject, user_id)
     if not user:
+        logger.warning("User not found", extra={"user_id": user_id})
         raise HTTPException(status_code=404, detail="user not found")
     pets = []
     for pet in user.pets_ids:
@@ -52,7 +59,10 @@ async def get_user_pets_from_pet_service(
             pets.append(pet_response)
         except HTTPException as e:
             if e.status_code == 404 and e.detail == "pet not found":
-                print("pet not found", pet.pet_id)
+                logger.warning(
+                    "Pet reference cleanup", extra={"pet_id": pet.pet_id, "user_id": user_id}
+                )
+    logger.info("Retrieved user's pets", extra={"user_id": user_id, "pet_count": len(pets)})
     return pets
 
 
@@ -62,29 +72,37 @@ def format_user_response(user: models.UserTableObject, pets: List[models.UserPet
 
 
 async def cast_user_to_response(
-    user: models.UserTableObject,
-    session: database.SessionDep,
-    api_instance: DefaultApi = Depends(pet_service_client.getApiClient),
+    user: models.UserTableObject, session: database.SessionDep, api_instance: DefaultApi
 ):
-    return format_user_response(
-        user,
-        await get_user_pets_from_pet_service(user.id, session, api_instance),  # type: ignore
-    )
+    if user.id:
+        return format_user_response(
+            user,
+            await get_user_pets_from_pet_service(user.id, session, api_instance),
+        )
+    else:
+        raise HTTPException(status_code=404, detail="user not found")
 
 
 @app.post("/users/", response_model=models.UserResponseObject)
 async def create_user(
     user: models.UserCreateObject,
     session: database.SessionDep,
-    api_instance: DefaultApi = Depends(pet_service_client.getApiClient),
+    api_instance: pet_service_client.ApiClientDep,
 ):
+    logger = getContextualLogger()
     try:
+        logger.info("Creating new user", extra={"user_data": user.model_dump()})
         db_user = models.UserTableObject.model_validate(user)
         session.add(db_user)
         session.commit()
         session.refresh(db_user)
-        return await cast_user_to_response(db_user, session, api_instance)  # type: ignore
+        response = await cast_user_to_response(db_user, session, api_instance)
+        logger.info("Successfully created user", extra={"user_id": db_user.id})
+        return response
     except Exception as e:
+        logger.error(
+            "Failed to create user", extra={"error": str(e), "user_data": user.model_dump()}
+        )
         raise HTTPException(status_code=500, detail=f"Error creating user: {e}")
 
 
@@ -92,10 +110,13 @@ async def create_user(
 async def get_user(
     user_id: int,
     session: database.SessionDep,
-    api_instance: DefaultApi = Depends(pet_service_client.getApiClient),
+    api_instance: pet_service_client.ApiClientDep,
 ):
+    logger = getContextualLogger()
+    logger.debug("Fetching user", extra={"user_id": user_id})
     user = session.get(models.UserTableObject, user_id)
     if user is None:
+        logger.warning("User not found", extra={"user_id": user_id})
         raise HTTPException(status_code=404, detail="user not found")
     return await cast_user_to_response(user, session, api_instance)
 
@@ -107,10 +128,14 @@ async def list_users(
     limit: Annotated[int, Query(le=100)] = 100,
     api_instance: DefaultApi = Depends(pet_service_client.getApiClient),
 ):
+    logger = getContextualLogger()
+    logger.debug("Listing users", extra={"offset": offset, "limit": limit})
     users = session.exec(select(models.UserTableObject).offset(offset).limit(limit)).all()
-    return await asyncio.gather(
+    response = await asyncio.gather(
         *[cast_user_to_response(user, session, api_instance) for user in users]
     )
+    logger.info("Retrieved users list", extra={"count": len(users)})
+    return response
 
 
 @app.patch("/users/{user_id}", response_model=models.UserResponseObject)
@@ -118,10 +143,15 @@ async def update_user(
     user_id: int,
     user_update: models.UserUpdateObject,
     session: database.SessionDep,
-    api_instance: DefaultApi = Depends(pet_service_client.getApiClient),
+    api_instance: pet_service_client.ApiClientDep,
 ):
+    logger = getContextualLogger()
+    logger.debug(
+        "Updating user", extra={"user_id": user_id, "update_data": user_update.model_dump()}
+    )
     db_user = session.get(models.UserTableObject, user_id)
     if not db_user:
+        logger.warning("User not found for update", extra={"user_id": user_id})
         raise HTTPException(status_code=404, detail="user not found")
 
     user_data = user_update.model_dump(exclude_unset=True)
@@ -129,16 +159,22 @@ async def update_user(
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
-    return await cast_user_to_response(db_user, session, api_instance)
+    response = await cast_user_to_response(db_user, session, api_instance)
+    logger.info("Successfully updated user", extra={"user_id": user_id})
+    return response
 
 
 @app.delete("/users/{user_id}")
 async def delete_user(user_id: int, session: database.SessionDep) -> dict[str, bool]:
+    logger = getContextualLogger()
+    logger.debug("Attempting to delete user", extra={"user_id": user_id})
     user = session.get(models.UserTableObject, user_id)
     if not user:
+        logger.warning("User not found for deletion", extra={"user_id": user_id})
         raise HTTPException(status_code=404, detail="user not found")
     session.delete(user)
     session.commit()
+    logger.info("Successfully deleted user", extra={"user_id": user_id})
     return {"ok": True}
 
 
@@ -147,15 +183,21 @@ async def adopt_pet(
     user_id: int,
     pet_id: int,
     session: database.SessionDep,
-    api_instance: DefaultApi = Depends(pet_service_client.getApiClient),
+    api_instance: pet_service_client.ApiClientDep,
 ):
+    logger = getContextualLogger()
+    logger.debug("Processing pet adoption", extra={"user_id": user_id, "pet_id": pet_id})
     user = session.get(models.UserTableObject, user_id)
     if not user:
+        logger.warning("User not found for adoption", extra={"user_id": user_id})
         raise HTTPException(status_code=404, detail="user not found")
-    # Create an instance of the API class
+
     pet_response = await get_pet_from_pet_service(pet_id, session, api_instance)
     pet = session.get(models.UserPetTableObject, pet_response and pet_response.id)
     if not pet:
+        logger.info(
+            "Creating new pet adoption record", extra={"user_id": user_id, "pet_id": pet_id}
+        )
         pet = models.UserPetTableObject.model_validate(
             {"pet_id": pet_response.id, "user_id": user_id}
         )
@@ -163,7 +205,9 @@ async def adopt_pet(
     user.pets_ids.append(pet)
     session.add(user)
     session.commit()
-    return await cast_user_to_response(user, session, api_instance)
+    response = await cast_user_to_response(user, session, api_instance)
+    logger.info("Successfully processed pet adoption", extra={"user_id": user_id, "pet_id": pet_id})
+    return response
 
 
 if __name__ == "__main__":

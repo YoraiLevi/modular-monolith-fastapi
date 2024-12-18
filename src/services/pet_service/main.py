@@ -7,26 +7,34 @@ import uvicorn
 from ._app import app
 from . import database, models
 from common.routers import status_OK
+from common.logging import getContextualLogger
 
 app.include_router(status_OK.router, prefix="/health")
 
 
 @app.post("/pets/", response_model=models.PetResponseObject)
 async def create_pet(pet: models.PetCreateObject, session: database.SessionDep):
+    logger = getContextualLogger()
     try:
+        logger.info("Creating new pet", extra={"pet_data": pet.model_dump()})
         db_pet = models.PetTableObject.model_validate(pet)
         session.add(db_pet)
         session.commit()
         session.refresh(db_pet)
+        logger.info("Successfully created pet", extra={"pet_id": db_pet.id})
         return db_pet
     except Exception as e:
+        logger.error("Failed to create pet", extra={"error": str(e), "pet_data": pet.model_dump()})
         raise HTTPException(status_code=500, detail=f"Error creating pet: {e}")
 
 
 @app.get("/pets/{pet_id}", response_model=models.PetResponseObject)
 async def get_pet(pet_id: int, session: database.SessionDep):
+    logger = getContextualLogger()
+    logger.debug("Fetching pet", extra={"pet_id": pet_id})
     pet = session.get(models.PetTableObject, pet_id)
     if pet is None:
+        logger.warning("Pet not found", extra={"pet_id": pet_id})
         raise HTTPException(status_code=404, detail="Pet not found")
     return pet
 
@@ -35,14 +43,20 @@ async def get_pet(pet_id: int, session: database.SessionDep):
 async def list_pets(
     session: database.SessionDep, offset: int = 0, limit: Annotated[int, Query(le=100)] = 100
 ):
+    logger = getContextualLogger()
+    logger.debug("Listing pets", extra={"offset": offset, "limit": limit})
     pets = session.exec(select(models.PetTableObject).offset(offset).limit(limit)).all()
+    logger.info("Retrieved pets list", extra={"count": len(pets)})
     return pets
 
 
 @app.patch("/pets/{pet_id}", response_model=models.PetResponseObject)
 async def update_pet(pet_id: int, pet_update: models.PetUpdateObject, session: database.SessionDep):
+    logger = getContextualLogger()
+    logger.debug("Updating pet", extra={"pet_id": pet_id, "update_data": pet_update.model_dump()})
     db_pet = session.get(models.PetTableObject, pet_id)
     if not db_pet:
+        logger.warning("Pet not found for update", extra={"pet_id": pet_id})
         raise HTTPException(status_code=404, detail="Pet not found")
 
     pet_data = pet_update.model_dump(exclude_unset=True)
@@ -50,16 +64,21 @@ async def update_pet(pet_id: int, pet_update: models.PetUpdateObject, session: d
     session.add(db_pet)
     session.commit()
     session.refresh(db_pet)
+    logger.info("Successfully updated pet", extra={"pet_id": pet_id})
     return db_pet
 
 
 @app.delete("/pets/{pet_id}")
 async def delete_pet(pet_id: int, session: database.SessionDep) -> dict[str, bool]:
+    logger = getContextualLogger()
+    logger.debug("Attempting to delete pet", extra={"pet_id": pet_id})
     pet = session.get(models.PetTableObject, pet_id)
     if not pet:
+        logger.warning("Pet not found for deletion", extra={"pet_id": pet_id})
         raise HTTPException(status_code=404, detail="Pet not found")
     session.delete(pet)
     session.commit()
+    logger.info("Successfully deleted pet", extra={"pet_id": pet_id})
     return {"ok": True}
 
 

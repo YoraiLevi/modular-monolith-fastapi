@@ -14,7 +14,7 @@ engine = create_engine(
 
 
 # Dependency to get DB session
-def get_session():
+async def get_session():
     with Session(engine) as session:
         yield session
 
