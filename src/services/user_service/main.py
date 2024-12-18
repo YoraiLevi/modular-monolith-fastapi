@@ -12,6 +12,10 @@ from services.user_service import pet_service_client
 from ._app import app
 from . import database, models
 
+from common.routers import status_OK
+
+app.include_router(status_OK.router, prefix="/health")
+
 
 async def get_pet_from_pet_service(
     pet_id: int,

@@ -2,7 +2,8 @@
 mkdir -p ./logs/
 # generate api client
 uv pip uninstall generated/api
-python src/app/subapp.openapi.py > generated/openapi.json
+uv pip uninstall modular_monolith_api
+# python src/app/subapp.openapi.py > generated/openapi.json
 rm -r generated/api; \
 npx -g openapi-generator-cli generate \
  --additional-properties=generateSourceCodeOnly=false,packageName=modular_monolith_api \

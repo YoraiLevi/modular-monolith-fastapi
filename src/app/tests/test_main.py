@@ -6,6 +6,7 @@ from app.main import app
 
 @pytest.mark.anyio
 async def test_root():
+    # How to test health but also follow redirects?
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         response = await ac.get("/health")
     assert response.status_code == 200

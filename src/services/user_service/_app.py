@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
+from common.logging.middleware import LoggerContextMiddleware
+
 
 from .create_tables import create_tables
 
@@ -14,3 +16,4 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(LoggerContextMiddleware, logger_name="user_service")

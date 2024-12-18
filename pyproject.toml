@@ -47,6 +47,9 @@ strict = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto" 
+exclude = [
+  "generated"
+]
 pythonpath = [
   ".","src","generated"
 ]

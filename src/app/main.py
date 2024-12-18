@@ -1,3 +1,4 @@
+import atexit
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -5,10 +6,11 @@ from pathlib import Path
 import uvicorn
 from fastapi import FastAPI
 
-from common.config_loader import load_config
+import common.routers.status_OK as status_OK
+from common.config_loader import config_path, load_config
 from common.importer import ImportFromStringError, import_from_string
-from common.config_loader import config_path
-import atexit
+from common.logging.middleware import LoggerContextMiddleware
+
 # Set up logging
 
 service_name = str(Path(__file__).parent.name)
@@ -24,6 +26,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(LoggerContextMiddleware, logger_name=service_name)
 
 schema_path = Path(__file__).parent / "config_schema.yaml"
 config = load_config(config_path, schema_path)
@@ -52,10 +55,7 @@ for sub_app_name, sub_app_info in config["sub_routes"].items():
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}")
 
-
-@app.get("/health")
-async def root():
-    return {"status": "OK"}
+app.include_router(status_OK.router, prefix="/health")
 
 
 if __name__ == "__main__":

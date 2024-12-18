@@ -6,6 +6,9 @@ import uvicorn
 
 from ._app import app
 from . import database, models
+from common.routers import status_OK
+
+app.include_router(status_OK.router, prefix="/health")
 
 
 @app.post("/pets/", response_model=models.PetResponseObject)
