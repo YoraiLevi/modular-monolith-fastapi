@@ -2,9 +2,9 @@
 
 This is a modular monolith Fast API project that uses the latest and greatest tooling ([uv](https://github.com/astral-sh/uv), [ruff](https://github.com/astral-sh/ruff), [pyright](https://github.com/microsoft/pyright), [pydantic](https://github.com/pydantic/pydantic), [pytest](https://github.com/pytest-dev/pytest), [fastapi](https://github.com/fastapi/fastapi), [sqlmodel](https://github.com/fastapi/sqlmodel), etc) attempting to implement a modular monolith architecture. The repository include pre-commit hooks for ruff, pyright, and uv.
 
-For project setup and usage jump to the [Setup and development](#setup-and-development) section.
-This project isn't intended to be a production ready application, it's a proof of concept and a starting point for a modular monolith Fast API application.
-for implementation details see [Choosing technology](#choosing-technology)
+For quick setup instructions, jump to the [Setup and development](#setup-and-development) section.
+This project serves as a proof of concept and starting point for building modular monolith applications with FastAPI.
+For technical details, see [Choosing technology](#choosing-technology).
 
 ## Architecture and Design
 
@@ -47,54 +47,58 @@ So... if you read between the lines modular monoliths are just a buzzword for "g
 
 #### What does the modular monolith solve?
 
-if we think about [Microservices Communications](https://medium.com/design-microservices-architecture-with-patterns/microservices-communications-f319f8d76b71) really hard we can see that the main difference between microservices and modular monoliths
-"One runs on a single process and the other runs on multiple processes" summarzing everything, maybe too quickly, they're both applying "Seperation of Concerns" and "Single Responsibility" principles on a different abstraction level... so what's the difference?
-true argument for and against mono-centric vs distributed concern management is [`Conway’s Law`](https://www.youtube.com/watch?v=TqhkWaeUN_8) which states that "organizations design systems that mirror their communication structure".
-So the difference is our team. if we are a small team we should build a monolith and if we have multiple teams we should build a microservice. knowingly develop software with Conway's law in mind.
+If we think about [Microservices Communications](https://medium.com/design-microservices-architecture-with-patterns/microservices-communications-f319f8d76b71), the main difference between microservices and modular monoliths is that "One runs on a single process and the other runs on multiple processes". They both apply "Separation of Concerns" and "Single Responsibility" principles, just at different abstraction levels.
 
-### Communication between software components
+The true argument for and against mono-centric vs distributed concern management is [`Conway's Law`](https://www.youtube.com/watch?v=TqhkWaeUN_8), which states that "organizations design systems that mirror their communication structure". So the choice between monolith and microservices often comes down to team structure - small teams benefit from monoliths, while multiple teams might prefer microservices.
+
+### Communication between Software Components
 
 [<img src="https://miro.medium.com/v2/resize:fit:640/format:webp/1*3YmRKPhEPGF0FZ8cR7J9sw.png" height="300"></img>](https://foojay.io/today/microservices-design-principles-for-well-crafted-architecture/)  
 
-This 2x2 grid is found in many articles and videos about microservices vesus modular monoliths it splits the space of software into two axes, logical and physical.  
-logical - How the software is bunched or separated together  
-physical - Where the software is running  
-Most github project that I found which claim to implement a form of modular monolith are actually just implement a form of a normal monolith with good seperation of concerns. at some point all the parts of the software have to communicate with each other. traditionally there are two ways to do this:
+The 2x2 grid above, commonly found in articles about microservices versus modular monoliths, splits software architecture into two axes:
+- **Logical**: How the software is organized and separated
+- **Physical**: Where the software runs
 
-1. Function calls - "Local" Procedure call - Some part of the software exposes a function that can be called by another part of the software.
-2. RPC - Remote Procedure call - Some part of the software exposes a function that can be called by another part of the software maybe on a different machine even.
+Most GitHub projects claiming to implement modular monoliths actually implement a normal monolith with good separation of concerns. All parts of the software must communicate, typically in one of two ways:
 
-So if we are taking our software to be "well designed" and "modular" to begin with we are left with only one axis and it's the physical axis which only tells us where the software is running and not how it's communicating with the other parts of itself.
+1. **Function Calls** (Local Procedure Calls): Direct function calls between different parts of the software
+2. **RPC** (Remote Procedure Calls): Function calls that can work across different machines
 
-The 2x2 grid should actually be a line from left to right over the "openness to communication" axis.  
+If we assume our software is "well-designed" and "modular", we're really only working with the physical axis - determining where the software runs, not how it communicates internally.
+
+The 2x2 grid could be simplified to a single line representing "openness to communication":
 
 ![alt text](.readme_assets/openness_to_communication_line.png)
 
-A simple example of way to implement a "self-RPC" calling Monolith is to create a "monolithcal" REST API software with multiple responsibilities that only communicate with each other through their public API endpoints.
+A practical example of this is creating a "self-RPC" calling monolith - a REST API application with multiple responsibilities that communicate only through their public API endpoints.
 
-### Choosing technology
+### Project Implementation
 
-Let's see our basic requirements for the project:
+After researching modular monoliths, I decided to implement a practical example that demonstrates these concepts. This project implements a pet adoption system that showcases how to build a well-structured modular application. Here are the requirements that guided the implementation:
 
-* It must use python FastAPI and Uvicorn
-* It will expose a REST-like API
-* It will have multiple responsibilities with multiple different endpoints
-* Internally the software must communicate with its own parts through the public REST API
-* The software should incooporate a robust logging system
-* The software should have tests for all the routes, services and custom functionality
+#### Core Requirements
 
-Let's add some more requirements, for fun:
+* **FastAPI and Uvicorn**: The application must be built using FastAPI framework and served with Uvicorn
+* **REST API**: Expose a clean, RESTful API interface
+* **Multiple Services**: Support multiple responsibilities through different endpoints
+* **Internal Communication**: Services must communicate through their public REST API endpoints
+* **Logging**: Implement a robust logging system for debugging and monitoring
+* **Testing**: Comprehensive test coverage for routes, services, and custom functionality
 
-* The software is monolithic but should be able to be split into multiple services instantly
-* The public API should be well defined and typed
-* The public API should be autogenrated from the service specifications and use Pydantic models
-* The software will implement as much as possible using the FastAPI framework and AsyncIO tools
-* Each service should have its own logging configuration without mixups
+#### Additional Features
+
+* **Service Separation**: Although monolithic, the application should be designed to be easily split into microservices
+* **API Documentation**: Well-defined and typed API with automatic documentation
+* **Code Generation**: Auto-generated API clients from service specifications using Pydantic models
+* **Modern Async**: Leverage FastAPI and AsyncIO for efficient asynchronous operations
+* **Isolated Logging**: Each service maintains its own logging configuration
+
+The following sections detail how these requirements were implemented, starting with the technical choices and architecture decisions.
 
 #### Generating OpenAPI API bindings for Python's AsyncIO
 
-The FastAPI demonstrates how to [generate OpenAPI API bindings for TypeScript](https://fastapi.tiangolo.com/advanced/generate-clients/#generate-a-typescript-client) and suggests using [OpenAPI Generator](https://openapi-generator.tech/) to generate bindings for other languages. the OpenAPI generator is an nodejs tool and not a python tool so using it breaks our pure python dependency we have had so far.
-There are multiple other tools that can generate python bindings for OpenAPI specifications but they are all either abandoned or not maintained not working or confusing to use. they may work for you, I couldn't get any of them to work for this project.  
+The FastAPI docs demonstrates how to [generate OpenAPI API bindings for TypeScript](https://fastapi.tiangolo.com/advanced/generate-clients/#generate-a-typescript-client) and suggests using [OpenAPI Generator](https://openapi-generator.tech/) to generate bindings for other languages. the OpenAPI generator is an nodejs tool and not a python tool so using it breaks our pure python dependency we have had so far.
+There are multiple other tools that can generate python bindings for OpenAPI specifications but they are all either abandoned, unmaintained or not working. they may work for you, I couldn't get any of them to work for this project.  
 [Openapi Python Generator](https://github.com/MarcoMuellner/openapi-python-generator) |
 [openapi-python-client](https://github.com/openapi-generators/openapi-python-client) |
 [fastapi-code-generator](https://github.com/koxudaxi/fastapi-code-generator) |
@@ -108,6 +112,7 @@ OpenAPI Generator offers a variety of customization options, the [customization 
 npx -g openapi-generator-cli generate -g python --library asyncio \
  -i generated/openapi.json -o generated/api
 ```
+
 see the [`generate`](https://openapi-generator.tech/docs/usage#generate) command for the cli options and the [`python generator`](https://openapi-generator.tech/docs/generators/python#config-options) for python specific options.
 you can also use `--additional-properties` for more python specific options.  
 **NOTE:** the `--library asyncio` is a required option in order to be able to self-call the API from within the application. by default the generator uses `urllib3` which is blocking and halts the program making it never respond to the request it has generated to itself. (ask me how I know)
@@ -151,24 +156,45 @@ following [mCoding's video](https://youtu.be/9L77QExPmI0?si=qy7VcJ0aciWt2D7X&t=1
 **NOTE:** for formatting options and properties of loggers see [LogRecord attributes](https://docs.python.org/3/library/logging.html#logrecord-attributes)
 logging formatters [LogRecord attributes](https://docs.python.org/3/library/logging.html#logrecord-attributes)
 
-### Model💃, relationships💏 and CRUD
+### Model💃, Relationships💏 and CRUD Operations
 
-This project implements two CRUD services ["user"](src/services/user_service) and ["pet"](src/services/pet_service) with a many-to-many relationship between them. they're configured through [config.yaml](config.yaml) and aggregated into a single application via [src/app/main.py](src/app/main.py)
-A user can adopt multiple pets and a pet can be adopted by multiple users. the pet service is unaware of user service. the user service keeps track of the pets adopted by the user and requests data about pets from the pet service, it does not mirror the pet service's data.
-these two services are implemented through the [sqlmodel](https://sqlmodel.tiangolo.com/) library which is a "marriage" between sqlalchemy and pydantic with an SQLite database that is saved persistently to disk.
+This project implements a pet adoption system with two main services:
 
-The models, "entities" for the two services are defined in [src/services/user_service/models.py](src/services/user_service/models.py) and [src/services/pet_service/models.py](src/services/pet_service/models.py) respectively.
-The routes and business logic are defined in [src/services/user_service/main.py](src/services/user_service/routes.py) and [src/services/pet_service/main.py](src/services/pet_service/main.py) respectively.
+1. User Service [`src/services/user_service`](src/services/user_service)
+2. Pet Service [`src/services/pet_service`](src/services/pet_service)
 
-User experience is important so a user can adpopt a pet and when recieving a response data about themselves they can see all the pets they have adopted.
-```
-# User 1 Adpts Pet 1
+These services demonstrate a many-to-many relationship where users can adopt multiple pets, and pets can be adopted by multiple users. The services are configured through [config.yaml](config.yaml) and combined into a single application via [src/app/main.py](src/app/main.py).
+
+#### Service Architecture
+
+* **Pet Service**: Manages pet-related operations (create, read, update, delete)
+  * Pet attributes: name, species, age, mood, feeding time, interaction time
+  * Standalone service that doesn't know about users
+  * Provides endpoints for basic pet management and interactions (like feeding)
+
+* **User Service**: Handles user operations and pet adoption
+  * User attributes: name, ID
+  * Maintains relationships between users and their adopted pets
+  * Communicates with the Pet Service through its public API
+  * Does not duplicate pet data, only stores relationships
+
+Both services use [SQLModel](https://sqlmodel.tiangolo.com/) for database operations, combining SQLAlchemy's power with Pydantic's data validation. Data is stored in a SQLite database that persists between application restarts.
+
+#### Example Operations
+
+1. **Adopting a Pet**
+
+```bash
+# User 1 adopts Pet 1
 curl -X 'POST' \
   'http://127.0.0.1:8000/user/users/1/pets/1' \
   -H 'accept: application/json' \
   -d ''
 ```
-```
+
+Response shows the user with their newly adopted pet:
+
+```json
 {
   "name": "John Doe",
   "id": 1,
@@ -184,18 +210,21 @@ curl -X 'POST' \
     }
   ]
 }
-
 ```
 
-further more they can give them a treat and see the pets react to it!
+2. **Interacting with a Pet**
 
-```
+```bash
+# Give a treat to Pet 1
 curl -X 'POST' \
   'http://127.0.0.1:8000/pet/pets/1/treat' \
   -H 'accept: application/json' \
   -d ''
 ```
-```
+
+Response shows the pet's updated state:
+
+```json
 {
   "name": "Fluffy",
   "species": "cat",
@@ -206,42 +235,93 @@ curl -X 'POST' \
   "last_interaction": "2024-12-19T04:16:29.585531"
 }
 ```
-for the full route list see the [OpenAPI specification at generated/openapi.json](generated/openapi.json)
+
+#### Available API Endpoints
+
+Each service provides its own Swagger documentation:
+* Main API documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+* User Service API: [http://127.0.0.1:8000/user/docs](http://127.0.0.1:8000/user/docs)
+* Pet Service API: [http://127.0.0.1:8000/pet/docs](http://127.0.0.1:8000/pet/docs)
+
+For a complete list of available endpoints and their specifications, see the [OpenAPI specification](generated/openapi.json).
 
 ## Setup and development
 
-make sure you have uv and npm installed on the machine.
-```
-npm --version
-# 10.8.2
-```
-```
-uv --version
-# uv 0.5.8
+### Prerequisites
+
+Before starting, ensure you have the following installed:
+- Python 3.13 or higher
+- Node.js and npm (for OpenAPI generation)
+- UV package manager
+
+Check your installations:
+```bash
+python --version
+npm --version  # Should be 10.8.2 or higher
+uv --version   # Should be 0.5.8 or higher
 ```
 
-```
+### Installation
+
+1. Clone the repository:
+```bash
 git clone https://github.com/YoraiLevi/modular-monolith-fastapi
 cd modular-monolith-fastapi
+```
+
+2. Set up the Python environment:
+```bash
 uv sync
 source ./.venv/bin/activate
+```
+
+3. Start the application:
+```bash
 ./run.sh
 ```
-then navigate to:
-* [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-* [http://127.0.0.1:8000/user/docs](http://127.0.0.1:8000/user/docs)
-* [http://127.0.0.1:8000/pet/docs](http://127.0.0.1:8000/pet/docs)
 
-logs are written to the console and to the logs directory.
+### Accessing the Application
+
+Once running, you can access:
+* Main API documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+* User Service API: [http://127.0.0.1:8000/user/docs](http://127.0.0.1:8000/user/docs)
+* Pet Service API: [http://127.0.0.1:8000/pet/docs](http://127.0.0.1:8000/pet/docs)
+
+Logs are written to both the console and the `logs` directory.
 
 ### Debugging and Testing
 
-this repository includes a [launch.json](.vscode/launch.json) file for vscode debugging armed with a FastAPI launch settings.
-Execute tests with `pytest`
+#### VS Code Debugging
 
-```
+This repository includes a preconfigured VS Code debugging setup in [launch.json](.vscode/launch.json). To use it:
+
+1. Open the project in VS Code
+2. Navigate to the Debug panel (Ctrl+Shift+D)
+3. Select "FastAPI" from the debug configuration dropdown
+4. Start debugging (F5)
+
+#### Running Tests
+
+The project uses pytest for testing. To run tests:
+
+```bash
+# Run all tests
 pytest
+
+# Run tests with coverage report
+pytest --cov=src
+
+# Run specific test file
+pytest tests/test_specific_file.py
+
+# Run tests in verbose mode
+pytest -v
 ```
+
+#### Common Issues
+
+* If you encounter database errors, try deleting the SQLite database file and restarting the application
+* For OpenAPI generation issues, ensure npm is properly installed and the openapi-generator-cli is accessible
 
 ## More references
 
