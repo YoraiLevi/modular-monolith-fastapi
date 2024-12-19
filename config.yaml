@@ -2,10 +2,11 @@
 sub_routes:
   pet_service:
     path: "/pet"
-    app: "services.pet_service:app"
+    app: "services.pet_service:app" # should create an instantitation mechasim and allow duplicate apps
     database_url: "sqlite:///./.sqlite_db/pets.db"
   user_service:
     path: "/user"
-    app: "services.user_service:app"
+    app: "services.user_service:app" # should create an instantitation mechasim and allow duplicate apps
     database_url: "sqlite:///./.sqlite_db/user.db"
-    pet_service_url: "http://localhost:8000"
+    kwargs:
+        pet_service_url: "http://localhost:8000" # should respect url in config

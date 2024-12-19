@@ -21,6 +21,8 @@ else:
 
         modular_monolith_api = mock.Mock()
         DefaultApi = mock.Mock()
+        Configuration = mock.Mock()
+        ApiClient = mock.Mock()
         PetResponseObject = mock.Mock()
 
 

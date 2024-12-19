@@ -209,3 +209,73 @@ def test_list_pets_pagination(client: TestClient, session: Session):
     assert response.status_code == 200
     assert len(response.json()) == 5
     assert response.json()[0]["name"] == "Pet5"
+
+
+@pytest.mark.anyio
+def test_hydrate_pet(client: TestClient, session: Session):
+    pet = PetTableObject(name="TestPet", species="dog", age=2)
+    session.add(pet)
+    session.commit()
+    session.refresh(pet)
+
+    initial_interaction = pet.last_interaction
+    response = client.post(f"/pets/{pet.id}/hydrate")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == pet.id
+    assert data["last_interaction"] > initial_interaction.isoformat()  # type: ignore
+
+
+@pytest.mark.anyio
+def test_hydrate_pet_not_found(client: TestClient):
+    response = client.post("/pets/999/hydrate")
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+def test_feed_pet(client: TestClient, session: Session):
+    pet = PetTableObject(name="TestPet", species="dog", age=2)
+    session.add(pet)
+    session.commit()
+    session.refresh(pet)
+
+    initial_fed = pet.last_fed
+    initial_interaction = pet.last_interaction
+    response = client.post(f"/pets/{pet.id}/feed")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == pet.id
+    assert data["last_fed"] > initial_fed.isoformat()  # type: ignore
+    assert data["last_interaction"] > initial_interaction.isoformat()  # type: ignore
+
+
+@pytest.mark.anyio
+def test_feed_pet_not_found(client: TestClient):
+    response = client.post("/pets/999/feed")
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+def test_give_treat(client: TestClient, session: Session):
+    pet = PetTableObject(name="TestPet", species="dog", age=2)
+    session.add(pet)
+    session.commit()
+    session.refresh(pet)
+
+    initial_fed = pet.last_fed
+    initial_interaction = pet.last_interaction
+    initial_mood = pet.mood
+    response = client.post(f"/pets/{pet.id}/treat")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == pet.id
+    assert data["last_fed"] > initial_fed.isoformat()  # type: ignore
+    assert data["last_interaction"] > initial_interaction.isoformat()  # type: ignore
+    assert data["mood"] == "excited"
+    assert data["mood"] != initial_mood
+
+
+@pytest.mark.anyio
+def test_give_treat_not_found(client: TestClient):
+    response = client.post("/pets/999/treat")
+    assert response.status_code == 404

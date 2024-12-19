@@ -3,7 +3,6 @@ from typing import Annotated, List
 
 from fastapi import Depends, HTTPException, Query
 from sqlmodel import select, delete
-import uvicorn
 
 from .pet_service_client import DefaultApi
 
@@ -36,6 +35,10 @@ async def get_pet_from_pet_service(
         )
         statement = delete(models.UserPetTableObject).where(
             models.UserPetTableObject.pet_id == pet_id  # type: ignore
+        )
+        logger.debug(
+            "Executing SQL",
+            extra={"sql": str(statement.compile(compile_kwargs={"literal_binds": True}))},
         )
         session.exec(statement)  # type: ignore
         session.commit()
@@ -130,7 +133,12 @@ async def list_users(
 ):
     logger = getContextualLogger()
     logger.debug("Listing users", extra={"offset": offset, "limit": limit})
-    users = session.exec(select(models.UserTableObject).offset(offset).limit(limit)).all()
+    statement = select(models.UserTableObject).offset(offset).limit(limit)
+    logger.debug(
+        "Executing SQL",
+        extra={"sql": str(statement.compile(compile_kwargs={"literal_binds": True}))},
+    )
+    users = session.exec(statement).all()
     response = await asyncio.gather(
         *[cast_user_to_response(user, session, api_instance) for user in users]
     )
@@ -210,5 +218,5 @@ async def adopt_pet(
     return response
 
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+# if __name__ == "__main__":
+#     uvicorn.run(app, host="0.0.0.0", port=8000)

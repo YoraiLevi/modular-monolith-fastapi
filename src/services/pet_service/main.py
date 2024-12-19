@@ -82,5 +82,65 @@ async def delete_pet(pet_id: int, session: database.SessionDep) -> dict[str, boo
     return {"ok": True}
 
 
+@app.post("/pets/{pet_id}/hydrate", response_model=models.PetResponseObject)
+async def hydrate_pet(pet_id: int, session: database.SessionDep):
+    logger = getContextualLogger()
+    logger.debug("Hydrating pet", extra={"pet_id": pet_id})
+    pet = session.get(models.PetTableObject, pet_id)
+    if not pet:
+        logger.warning("Pet not found for hydration", extra={"pet_id": pet_id})
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    from datetime import datetime, UTC
+
+    pet.last_interaction = datetime.now(UTC)
+    session.add(pet)
+    session.commit()
+    session.refresh(pet)
+    logger.info("Successfully hydrated pet", extra={"pet_id": pet_id})
+    return pet
+
+
+@app.post("/pets/{pet_id}/feed", response_model=models.PetResponseObject)
+async def feed_pet(pet_id: int, session: database.SessionDep):
+    logger = getContextualLogger()
+    logger.debug("Feeding pet", extra={"pet_id": pet_id})
+    pet = session.get(models.PetTableObject, pet_id)
+    if not pet:
+        logger.warning("Pet not found for feeding", extra={"pet_id": pet_id})
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    from datetime import datetime, UTC
+
+    pet.last_fed = datetime.now(UTC)
+    pet.last_interaction = datetime.now(UTC)
+    session.add(pet)
+    session.commit()
+    session.refresh(pet)
+    logger.info("Successfully fed pet", extra={"pet_id": pet_id})
+    return pet
+
+
+@app.post("/pets/{pet_id}/treat", response_model=models.PetResponseObject)
+async def give_treat(pet_id: int, session: database.SessionDep):
+    logger = getContextualLogger()
+    logger.debug("Giving treat to pet", extra={"pet_id": pet_id})
+    pet = session.get(models.PetTableObject, pet_id)
+    if not pet:
+        logger.warning("Pet not found for treat", extra={"pet_id": pet_id})
+        raise HTTPException(status_code=404, detail="Pet not found")
+
+    from datetime import datetime, UTC
+
+    pet.last_fed = datetime.now(UTC)
+    pet.last_interaction = datetime.now(UTC)
+    pet.mood = "excited"  # Treats make pets excited!
+    session.add(pet)
+    session.commit()
+    session.refresh(pet)
+    logger.info("Successfully gave treat to pet", extra={"pet_id": pet_id})
+    return pet
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

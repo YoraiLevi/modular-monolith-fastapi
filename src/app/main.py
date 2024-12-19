@@ -9,11 +9,12 @@ from fastapi import FastAPI
 import common.routers.status_OK as status_OK
 from common.config_loader import config_path, load_config
 from common.importer import ImportFromStringError, import_from_string
+from common.logging.getLogger import getContextualLogger
 from common.logging.middleware import LoggerContextMiddleware
 
 # Set up logging
-
 service_name = str(Path(__file__).parent.name)
+logger = getContextualLogger()
 
 
 @asynccontextmanager
@@ -36,13 +37,14 @@ if queue_handler is not None:
     queue_handler.listener.start()  # type: ignore
     atexit.register(queue_handler.listener.stop)  # type: ignore
 
-logger = logging.getLogger(service_name)
 
 # Create the main application
 # Dynamically import and mount sub-applications based on the configuration
 for sub_app_name, sub_app_info in config["sub_routes"].items():
     route_path = sub_app_info["path"]
-    app_path = sub_app_info["app"]
+    app_path = sub_app_info[
+        "app"
+    ]  # TODO figure out a way to use a factory for apps from the config
     try:
         # Use the import_from_string function to import the sub-application
         sub_app_instance = import_from_string(app_path)
