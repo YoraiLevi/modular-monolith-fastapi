@@ -221,11 +221,17 @@ uv --version
 ```
 
 ```
-git clone
+git clone https://github.com/YoraiLevi/modular-monolith-fastapi
+cd modular-monolith-fastapi
 uv sync
 source ./.venv/bin/activate
 ./run.sh
 ```
+then navigate to:
+* [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+* [http://127.0.0.1:8000/user/docs](http://127.0.0.1:8000/user/docs)
+* [http://127.0.0.1:8000/pet/docs](http://127.0.0.1:8000/pet/docs)
+
 logs are written to the console and to the logs directory.
 
 ### Debugging and Testing
@@ -240,7 +246,7 @@ pytest
 ## More references
 
 * [Kraken Technologies: How we organise our very large Python monolith](https://blog.europython.eu/kraken-technologies-how-we-organize-our-very-large-pythonmonolith/) - reduce imports with importlinter
-*[Microservices Design Principles for Well-Crafted Architectures](https://foojay.io/today/microservices-design-principles-for-well-crafted-architecture/)
+* [Microservices Design Principles for Well-Crafted Architectures](https://foojay.io/today/microservices-design-principles-for-well-crafted-architecture/)
 * [Monolithic vs Microservice Architecture: Which To Use and When?](https://www.youtube.com/watch?v=NdeTGlZ__Do)
 * [Its Time to go Back to the Monoliths. Use Modular Monolith, save costs](https://www.youtube.com/watch?v=NWu7AJJlLM8)
 * [Struggling to get my head around monoliths vs microservices with FastAPI](https://www.reddit.com/r/devops/comments/180u1dw/struggling_to_get_my_head_around_monoliths_vs/)
