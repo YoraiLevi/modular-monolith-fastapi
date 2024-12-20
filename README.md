@@ -4,7 +4,7 @@ This is a modular monolith Fast API project that uses the latest and greatest to
 
 For quick setup instructions, jump to the [Setup and development](#setup-and-development) section.
 This project serves as a proof of concept and starting point for building modular monolith applications with FastAPI.
-For technical details, see [Choosing technology](#choosing-technology).
+For technical details, see [Choosing technology](#project-implementation)
 
 ## Architecture and Design
 
@@ -38,7 +38,7 @@ I think these two fellows in the comments summarize the concensous best:
 
 [Don't start with microservices – monoliths are your friend](https://news.ycombinator.com/item?id=29576352)
 
-> one ever talks about architectures in the middle between those two - modular monoliths
+> no one ever talks about architectures in the middle between those two - modular monoliths
 > (KronisLV)  
 > Because there is no newly invented architecture called "modular monolith" - monolith was always supposed to be MODULAR from the start.
 > (ozim)
