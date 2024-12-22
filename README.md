@@ -4,7 +4,7 @@ This is a modular monolith Fast API project that uses the latest and greatest to
 
 For quick setup instructions, jump to the [Setup and development](#setup-and-development) section.
 This project serves as a proof of concept and starting point for building modular monolith applications with FastAPI.
-For technical details, see [Choosing technology](#project-implementation)
+For technical details, see [Project Implementation](#project-implementation)
 
 ## Architecture and Design
 
@@ -131,7 +131,7 @@ the [Purpose of sub applications](https://www.reddit.com/r/FastAPI/comments/11yz
 **Alternatives:** we don't have to use mounts, we could just run multiple application instances under the same python process. uvicorn exposes [`serve`](https://gist.github.com/tenuki/ff67f87cba5c4c04fd08d9c800437477?permalink_comment_id=4236491#gistcomment-4236491) which can be used to orchestrate multiple applications under the same python process, this however forces us to use different ports for each application! this may be desirable and puts us even closer to the microservice architecture.
 **Bonus point to the alternative:** by manutally creating the AsyncIO event loop we can mirror javascript promises and make asyncio act like promises when used with `asyncio.create_task` [How can I start a Python async coroutine eagerly?](https://stackoverflow.com/a/77268945/12603110)
 
-we could go even further and implement [Domain-driven design with Python and FastAPI](https://www.actidoo.com/en/blog/python-fastapi-domain-driven-design) which goes as far as to force "restriction of import between domains" is a little bit of a stretch, stopping here is a good compromise.
+we could go even further and implement [Domain-driven design with Python and FastAPI](https://www.actidoo.com/en/blog/python-fastapi-domain-driven-design) which goes as far as to force "restriction of import between domains" is a little bit of a stretch, so it was only partially implemented
 
 ### Context aware logger
 
@@ -187,7 +187,7 @@ Both services use [SQLModel](https://sqlmodel.tiangolo.com/) for database operat
 ```bash
 # User 1 adopts Pet 1
 curl -X 'POST' \
-  'http://127.0.0.1:8000/user/users/1/pets/1' \
+  'http://127.0.0.1:8000/user/1/pets/1' \
   -H 'accept: application/json' \
   -d ''
 ```
@@ -217,7 +217,7 @@ Response shows the user with their newly adopted pet:
 ```bash
 # Give a treat to Pet 1
 curl -X 'POST' \
-  'http://127.0.0.1:8000/pet/pets/1/treat' \
+  'http://127.0.0.1:8000/pet/1/treat' \
   -H 'accept: application/json' \
   -d ''
 ```
