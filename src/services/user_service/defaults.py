@@ -1,0 +1,4 @@
+DATABASE_URL = "sqlite://"
+PET_SERVICE_URL = "http://localhost:8000"
+DEFAULT_LIMIT = 100
+MAX_LIMIT = 100

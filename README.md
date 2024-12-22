@@ -280,6 +280,13 @@ source ./.venv/bin/activate
 ./run.sh
 ```
 
+More ways to run the application:
+```bash
+python -m app # run the aggregate application
+uvicorn services.user_service:app --reload # run the user service with default service configuration
+uvicorn services.pet_service:app --reload # run the pet service with default service configuration
+```
+
 ### Accessing the Application
 
 Once running, you can access:
@@ -394,9 +401,7 @@ pytest -v
 
 * Maybe I misunderstood how uvicorns [--reload-exclude](https://www.uvicorn.org/settings/#reloading-with-watchfiles) is supposed to work but it doesn't seem to work for me, this caused the `watchfile` logger to be created and log messages to be printed to the console. and self-update itself when used with `--reload` and `DEBUG` settings. it blocked the entire application.
 * there are multiple `main.py` each one is intended to be an entrypoint for a service or an aggregate application. as it is now they aren't all operational.
-* `config.yaml` should define all the services and their dependencies, as it is now it's lacking some custom instantiation logic.
-* `_app.py` shouldn't exist, it's a global container for the FastAPI application instance and it's needed so uvicorn can be used in development with the flag `--reload`.
-* As it is now the modular monolith cannot be split into multiple services, it's a single application and it breaks when attempted to run some of the services outside of the aggregate application (related to openapi code generation) aka running `uvicorn services.pet_service:app` & `uvicorn services.user_service:app` breaks the user service.
+* figure out how to allow `--reload` to work with app.main launch script
 
 ### Conundrums and open questions
 

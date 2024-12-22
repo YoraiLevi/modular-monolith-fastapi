@@ -1,14 +1,23 @@
 # config_schema.yaml
 type: object
 properties:
-  sub_routes:
+  eager_task_factory:
+    type: boolean
+  apps:
     type: object
     additionalProperties:
       type: object
       properties:
-        path:
+        port:
+          type: number
+        host:
           type: string
-        app:
-          type: string
-      required: [path, app]
-required: [sub_routes]
+        sub_apps:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              path:
+                type: string
+              app:
+                type: string

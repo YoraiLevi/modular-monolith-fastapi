@@ -1,12 +1,16 @@
 from typing import Generator
 
+from fastapi import FastAPI
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
+from services.pet_service.core.service import PetService
+from services.pet_service.dependencies.service import get_pet_service_instance
+
 from ..main import app
-from ..database import get_session
+from ..dependencies.database import get_session
 from ..models import PetTableObject
 
 # Use in-memory SQLite for testing
@@ -26,12 +30,28 @@ def session_fixture() -> Generator[Session, None, None]:
     SQLModel.metadata.drop_all(engine)
 
 
+@pytest.fixture(name="petServiceInstance")
+def get_pet_service_instance_fixture() -> PetService:
+    return PetService()
+
+
+@pytest.fixture(name="app")
+def app_fixture() -> FastAPI:
+    return app(database_url=TEST_DATABASE_URL)
+
+
 @pytest.fixture(name="client")
-def client_fixture(session: Session) -> Generator[TestClient, None, None]:
+def client_fixture(
+    app: FastAPI, session: Session, petServiceInstance: PetService
+) -> Generator[TestClient, None, None]:
     def get_session_override():
         return session
 
+    async def get_pet_service_instance_override():
+        return petServiceInstance
+
     app.dependency_overrides[get_session] = get_session_override
+    app.dependency_overrides[get_pet_service_instance] = get_pet_service_instance_override
     client = TestClient(app)
     yield client
     app.dependency_overrides.clear()
@@ -40,7 +60,7 @@ def client_fixture(session: Session) -> Generator[TestClient, None, None]:
 @pytest.mark.anyio
 def test_create_pet(client: TestClient):
     pet_data = {"name": "Fluffy", "species": "cat", "age": 3}  # mood is optional with default
-    response = client.post("/pets/", json=pet_data)
+    response = client.post("/", json=pet_data)
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == pet_data["name"]
@@ -54,7 +74,7 @@ def test_create_pet(client: TestClient):
 
 @pytest.mark.anyio
 def test_create_pet_invalid(client: TestClient):
-    response = client.post("/pets/", json={"name": "Invalid"})  # missing required fields
+    response = client.post("/", json={"name": "Invalid"})  # missing required fields
     assert response.status_code == 422
 
 
@@ -67,7 +87,7 @@ def test_read_pets(client: TestClient, session: Session):
     session.add(pet2)
     session.commit()
 
-    response = client.get("/pets/")
+    response = client.get("/")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
@@ -81,7 +101,7 @@ def test_read_pet(client: TestClient, session: Session):
     session.add(pet)
     session.commit()
 
-    response = client.get(f"/pets/{pet.id}")
+    response = client.get(f"/{pet.id}")
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "TestPet"
@@ -111,7 +131,7 @@ def test_update_pet(client: TestClient, session: Session):
         "age": 3,
         "mood": "excited",
     }
-    response = client.patch(f"/pets/{pet.id}", json=update_data)
+    response = client.patch(f"/{pet.id}", json=update_data)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == pet.id
@@ -130,7 +150,7 @@ def test_update_pet_no_changes_undefined_fields(client: TestClient, session: Ses
     session.commit()
     session.refresh(pet)
     update_data = {}
-    response = client.patch(f"/pets/{pet.id}", json=update_data)
+    response = client.patch(f"/{pet.id}", json=update_data)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == pet.id
@@ -150,7 +170,7 @@ def test_update_pet_partial(client: TestClient, session: Session):
         "name": "NewName",
         "species": "cat",
     }
-    response = client.patch(f"/pets/{pet.id}", json=update_data)
+    response = client.patch(f"/{pet.id}", json=update_data)
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == pet.id
@@ -166,7 +186,7 @@ def test_delete_pet(client: TestClient, session: Session):
     session.add(pet)
     session.commit()
 
-    response = client.delete(f"/pets/{pet.id}")
+    response = client.delete(f"/{pet.id}")
     assert response.status_code == 200
     assert response.json() == {"ok": True}
 
@@ -177,7 +197,7 @@ def test_delete_pet(client: TestClient, session: Session):
 
 @pytest.mark.anyio
 def test_delete_pet_not_found(client: TestClient):
-    response = client.delete("/pets/999")
+    response = client.delete("/999")
     assert response.status_code == 404
 
 
@@ -190,22 +210,22 @@ def test_list_pets_pagination(client: TestClient, session: Session):
     session.commit()
 
     # Test default pagination
-    response = client.get("/pets/")
+    response = client.get("/")
     assert response.status_code == 200
     assert len(response.json()) == 15  # Default limit is 100
 
     # Test with limit
-    response = client.get("/pets/?limit=5")
+    response = client.get("/?limit=5")
     assert response.status_code == 200
     assert len(response.json()) == 5
 
     # Test with offset
-    response = client.get("/pets/?offset=10")
+    response = client.get("/?offset=10")
     assert response.status_code == 200
     assert len(response.json()) == 5  # Should get last 5 pets
 
     # Test with both offset and limit
-    response = client.get("/pets/?offset=5&limit=5")
+    response = client.get("/?offset=5&limit=5")
     assert response.status_code == 200
     assert len(response.json()) == 5
     assert response.json()[0]["name"] == "Pet5"
@@ -219,7 +239,7 @@ def test_hydrate_pet(client: TestClient, session: Session):
     session.refresh(pet)
 
     initial_interaction = pet.last_interaction
-    response = client.post(f"/pets/{pet.id}/hydrate")
+    response = client.post(f"/{pet.id}/hydrate")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == pet.id
@@ -228,7 +248,7 @@ def test_hydrate_pet(client: TestClient, session: Session):
 
 @pytest.mark.anyio
 def test_hydrate_pet_not_found(client: TestClient):
-    response = client.post("/pets/999/hydrate")
+    response = client.post("/999/hydrate")
     assert response.status_code == 404
 
 
@@ -241,7 +261,7 @@ def test_feed_pet(client: TestClient, session: Session):
 
     initial_fed = pet.last_fed
     initial_interaction = pet.last_interaction
-    response = client.post(f"/pets/{pet.id}/feed")
+    response = client.post(f"/{pet.id}/feed")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == pet.id
@@ -251,7 +271,7 @@ def test_feed_pet(client: TestClient, session: Session):
 
 @pytest.mark.anyio
 def test_feed_pet_not_found(client: TestClient):
-    response = client.post("/pets/999/feed")
+    response = client.post("/999/feed")
     assert response.status_code == 404
 
 
@@ -265,7 +285,7 @@ def test_give_treat(client: TestClient, session: Session):
     initial_fed = pet.last_fed
     initial_interaction = pet.last_interaction
     initial_mood = pet.mood
-    response = client.post(f"/pets/{pet.id}/treat")
+    response = client.post(f"/{pet.id}/treat")
     assert response.status_code == 200
     data = response.json()
     assert data["id"] == pet.id

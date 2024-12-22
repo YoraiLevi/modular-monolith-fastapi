@@ -1,12 +1,28 @@
 # config.yaml
-sub_routes:
-  pet_service:
-    path: "/pet"
-    app: "services.pet_service:app" # should create an instantitation mechasim and allow duplicate apps
-    database_url: "sqlite:///./.sqlite_db/pets.db"
-  user_service:
-    path: "/user"
-    app: "services.user_service:app" # should create an instantitation mechasim and allow duplicate apps
-    database_url: "sqlite:///./.sqlite_db/user.db"
-    kwargs:
-        pet_service_url: "http://localhost:8000" # should respect url in config
+eager_task_factory: true
+apps:
+  app:
+    log_config: log_config.json
+    port: 8000
+    host: "localhost"
+    sub_apps:
+      pet_service:
+        path: "/pet"
+        app: "services.pet_service:app"
+        kwargs: 
+          database_url: "sqlite:///./.sqlite_db/pets.db"
+      user_service:
+        path: "/user"
+        app: "services.user_service:app"
+        kwargs:
+          pet_service_url: "http://localhost:8000/pet"
+          database_url: "sqlite:///./.sqlite_db/user.db"
+  # app1:
+  #   port: 8001
+  #   host: "localhost"
+  #   sub_apps:
+  #     pet_service_1:
+  #       path: "/pet"
+  #       app: "services.pet_service:app" # should create an instantitation mechasim and allow duplicate apps
+  #       kwargs: 
+  #         database_url: "sqlite:///./.sqlite_db/pets1.db"

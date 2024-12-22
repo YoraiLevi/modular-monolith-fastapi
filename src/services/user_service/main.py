@@ -1,222 +1,48 @@
-import asyncio
-from typing import Annotated, List
-
-from fastapi import Depends, HTTPException, Query
-from sqlmodel import select, delete
-
-from .pet_service_client import DefaultApi
-
-from services.user_service import pet_service_client
-
-from ._app import app
-from . import database, models
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from common.logging.getLogger import getContextualLogger
 from common.routers import status_OK
-from common.logging import getContextualLogger
+from services.user_service.core.service import UserService
+from services.user_service.dependencies.pet_service import get_pet_service_api_client
+from services.user_service.dependencies.service import get_user_service_instance
+from services.user_service.pet_service_client import create_pet_service_api_client
+from .routers import users
+from .core.database import create_tables
+from .dependencies.database import get_engine_instance, init_engine
+from .defaults import DATABASE_URL, PET_SERVICE_URL
 
-app.include_router(status_OK.router, prefix="/health")
 
-
-async def get_pet_from_pet_service(
-    pet_id: int, session: database.SessionDep, api_instance: DefaultApi
-):
-    logger = getContextualLogger()
-    logger.debug("Fetching pet from pet service", extra={"pet_id": pet_id})
-    pet_response = None
-    try:
-        pet_response = await api_instance.get_pet_pets_pet_id_get(pet_id)
-    except Exception as e:
-        logger.error(
-            "Failed to fetch pet from pet service", extra={"pet_id": pet_id, "error": str(e)}
+def app(database_url: str = DATABASE_URL, pet_service_url: str = PET_SERVICE_URL, *args, **kwargs):
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        getContextualLogger().info(
+            f"Starting app with args: database_url={database_url}, args={args}, kwargs={kwargs}"
         )
-        print("Exception when calling DefaultApi->get_pet_pets_pet_id_get: %s\n" % e)
-    if not pet_response:
-        logger.warning(
-            "Pet not found in pet service, cleaning up references", extra={"pet_id": pet_id}
-        )
-        statement = delete(models.UserPetTableObject).where(
-            models.UserPetTableObject.pet_id == pet_id  # type: ignore
-        )
-        logger.debug(
-            "Executing SQL",
-            extra={"sql": str(statement.compile(compile_kwargs={"literal_binds": True}))},
-        )
-        session.exec(statement)  # type: ignore
-        session.commit()
-        raise HTTPException(status_code=404, detail="pet not found")
-    return pet_response
+        engine = init_engine(database_url)
 
+        async def get_engine_instance_override():
+            return engine
 
-async def get_user_pets_from_pet_service(
-    user_id: int, session: database.SessionDep, api_instance: DefaultApi
-):
-    logger = getContextualLogger()
-    logger.debug("Fetching user's pets", extra={"user_id": user_id})
-    user = session.get(models.UserTableObject, user_id)
-    if not user:
-        logger.warning("User not found", extra={"user_id": user_id})
-        raise HTTPException(status_code=404, detail="user not found")
-    pets = []
-    for pet in user.pets_ids:
-        try:
-            pet_response = await get_pet_from_pet_service(pet.pet_id, session, api_instance)
-            pets.append(pet_response)
-        except HTTPException as e:
-            if e.status_code == 404 and e.detail == "pet not found":
-                logger.warning(
-                    "Pet reference cleanup", extra={"pet_id": pet.pet_id, "user_id": user_id}
-                )
-    logger.info("Retrieved user's pets", extra={"user_id": user_id, "pet_count": len(pets)})
-    return pets
+        app.dependency_overrides[get_engine_instance] = get_engine_instance_override
+        create_tables(engine)
 
+        user_service = UserService()
 
-def format_user_response(user: models.UserTableObject, pets: List[models.UserPetResponseObject]):
-    user.id  # TODO: figure out why user.model_dump() and user are "empty", is it related to commiting or changes?
-    return {**user.model_dump(), "pets": pets}
+        async def get_user_service_instance_override():
+            return user_service
 
+        app.dependency_overrides[get_user_service_instance] = get_user_service_instance_override
 
-async def cast_user_to_response(
-    user: models.UserTableObject, session: database.SessionDep, api_instance: DefaultApi
-):
-    if user.id:
-        return format_user_response(
-            user,
-            await get_user_pets_from_pet_service(user.id, session, api_instance),
-        )
-    else:
-        raise HTTPException(status_code=404, detail="user not found")
+        pet_service_api_client = create_pet_service_api_client(pet_service_url)
 
+        async def get_pet_service_api_client_override():
+            return pet_service_api_client
 
-@app.post("/users/", response_model=models.UserResponseObject)
-async def create_user(
-    user: models.UserCreateObject,
-    session: database.SessionDep,
-    api_instance: pet_service_client.ApiClientDep,
-):
-    logger = getContextualLogger()
-    try:
-        logger.info("Creating new user", extra={"user_data": user.model_dump()})
-        db_user = models.UserTableObject.model_validate(user)
-        session.add(db_user)
-        session.commit()
-        session.refresh(db_user)
-        response = await cast_user_to_response(db_user, session, api_instance)
-        logger.info("Successfully created user", extra={"user_id": db_user.id})
-        return response
-    except Exception as e:
-        logger.error(
-            "Failed to create user", extra={"error": str(e), "user_data": user.model_dump()}
-        )
-        raise HTTPException(status_code=500, detail=f"Error creating user: {e}")
+        app.dependency_overrides[get_pet_service_api_client] = get_pet_service_api_client_override
+        yield
 
+    app = FastAPI(lifespan=lifespan)
+    app.include_router(status_OK.router, prefix="/health")
+    app.include_router(users.create_router(), prefix="")
 
-@app.get("/users/{user_id}", response_model=models.UserResponseObject)
-async def get_user(
-    user_id: int,
-    session: database.SessionDep,
-    api_instance: pet_service_client.ApiClientDep,
-):
-    logger = getContextualLogger()
-    logger.debug("Fetching user", extra={"user_id": user_id})
-    user = session.get(models.UserTableObject, user_id)
-    if user is None:
-        logger.warning("User not found", extra={"user_id": user_id})
-        raise HTTPException(status_code=404, detail="user not found")
-    return await cast_user_to_response(user, session, api_instance)
-
-
-@app.get("/users/", response_model=List[models.UserResponseObject])
-async def list_users(
-    session: database.SessionDep,
-    offset: int = 0,
-    limit: Annotated[int, Query(le=100)] = 100,
-    api_instance: DefaultApi = Depends(pet_service_client.getApiClient),
-):
-    logger = getContextualLogger()
-    logger.debug("Listing users", extra={"offset": offset, "limit": limit})
-    statement = select(models.UserTableObject).offset(offset).limit(limit)
-    logger.debug(
-        "Executing SQL",
-        extra={"sql": str(statement.compile(compile_kwargs={"literal_binds": True}))},
-    )
-    users = session.exec(statement).all()
-    response = await asyncio.gather(
-        *[cast_user_to_response(user, session, api_instance) for user in users]
-    )
-    logger.info("Retrieved users list", extra={"count": len(users)})
-    return response
-
-
-@app.patch("/users/{user_id}", response_model=models.UserResponseObject)
-async def update_user(
-    user_id: int,
-    user_update: models.UserUpdateObject,
-    session: database.SessionDep,
-    api_instance: pet_service_client.ApiClientDep,
-):
-    logger = getContextualLogger()
-    logger.debug(
-        "Updating user", extra={"user_id": user_id, "update_data": user_update.model_dump()}
-    )
-    db_user = session.get(models.UserTableObject, user_id)
-    if not db_user:
-        logger.warning("User not found for update", extra={"user_id": user_id})
-        raise HTTPException(status_code=404, detail="user not found")
-
-    user_data = user_update.model_dump(exclude_unset=True)
-    db_user.sqlmodel_update(user_data)
-    session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
-    response = await cast_user_to_response(db_user, session, api_instance)
-    logger.info("Successfully updated user", extra={"user_id": user_id})
-    return response
-
-
-@app.delete("/users/{user_id}")
-async def delete_user(user_id: int, session: database.SessionDep) -> dict[str, bool]:
-    logger = getContextualLogger()
-    logger.debug("Attempting to delete user", extra={"user_id": user_id})
-    user = session.get(models.UserTableObject, user_id)
-    if not user:
-        logger.warning("User not found for deletion", extra={"user_id": user_id})
-        raise HTTPException(status_code=404, detail="user not found")
-    session.delete(user)
-    session.commit()
-    logger.info("Successfully deleted user", extra={"user_id": user_id})
-    return {"ok": True}
-
-
-@app.post("/users/{user_id}/pets/{pet_id}", response_model=models.UserResponseObject)
-async def adopt_pet(
-    user_id: int,
-    pet_id: int,
-    session: database.SessionDep,
-    api_instance: pet_service_client.ApiClientDep,
-):
-    logger = getContextualLogger()
-    logger.debug("Processing pet adoption", extra={"user_id": user_id, "pet_id": pet_id})
-    user = session.get(models.UserTableObject, user_id)
-    if not user:
-        logger.warning("User not found for adoption", extra={"user_id": user_id})
-        raise HTTPException(status_code=404, detail="user not found")
-
-    pet_response = await get_pet_from_pet_service(pet_id, session, api_instance)
-    pet = session.get(models.UserPetTableObject, pet_response and pet_response.id)
-    if not pet:
-        logger.info(
-            "Creating new pet adoption record", extra={"user_id": user_id, "pet_id": pet_id}
-        )
-        pet = models.UserPetTableObject.model_validate(
-            {"pet_id": pet_response.id, "user_id": user_id}
-        )
-        session.add(pet)
-    user.pets_ids.append(pet)
-    session.add(user)
-    session.commit()
-    response = await cast_user_to_response(user, session, api_instance)
-    logger.info("Successfully processed pet adoption", extra={"user_id": user_id, "pet_id": pet_id})
-    return response
-
-
-# if __name__ == "__main__":
-#     uvicorn.run(app, host="0.0.0.0", port=8000)
+    return app
