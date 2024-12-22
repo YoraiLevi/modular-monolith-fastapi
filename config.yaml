@@ -21,8 +21,6 @@ apps:
   #   port: 8001
   #   host: "localhost"
   #   sub_apps:
-  #     pet_service_1:
-  #       path: "/pet"
-  #       app: "services.pet_service:app" # should create an instantitation mechasim and allow duplicate apps
-  #       kwargs: 
-  #         database_url: "sqlite:///./.sqlite_db/pets1.db"
+  #     template_service:
+  #       path: "/template"
+  #       app: "services.template_service:app" # ASGI 'lifespan' protocol appears unsupported??
