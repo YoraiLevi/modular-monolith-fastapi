@@ -28,5 +28,5 @@ npx -g openapi-generator-cli generate \
  -i generated/user_service/openapi.json -o generated/user_service/api
 uv pip install generated/user_service/api
 # run app
-python -m app
+python -m app --config ./config.yaml --reload --reload-include '*.yaml' --reload-include '*.json' --reload-exclude 'generated/*' --reload-exclude 'logs/*'
 

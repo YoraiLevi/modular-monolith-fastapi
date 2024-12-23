@@ -1,10 +1,11 @@
 # config.yaml
-eager_task_factory: true
+eager_task_factory: false
+log_config: log_config.json
 apps:
   app:
-    log_config: log_config.json
     port: 8000
     host: "localhost"
+    log_config: log_config.json
     sub_apps:
       pet_service:
         path: "/pet"
